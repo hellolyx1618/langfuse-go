@@ -2,15 +2,18 @@ package traces
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 
 	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
-	AttrTraceName     = "langfuse.trace.name"
-	AttrTraceInput    = "langfuse.trace.input"
-	AttrTraceOutput   = "langfuse.trace.output"
+	AttrTraceName = "langfuse.trace.name"
+	// Deprecated: use AttrObservationInput instead.
+	AttrTraceInput = AttrObservationInput
+	// Deprecated: use AttrObservationOutput instead.
+	AttrTraceOutput   = AttrObservationOutput
 	AttrTraceTags     = "langfuse.trace.tags"
 	AttrTraceMetadata = "langfuse.trace.metadata"
 
@@ -54,10 +57,10 @@ func traceAttributes(t *Trace) []attribute.KeyValue {
 	attrs = append(attrs, attribute.String(AttrTraceName, t.Name))
 
 	if t.Input != nil {
-		attrs = append(attrs, attribute.String(AttrTraceInput, serializeToJSON(t.Input)))
+		attrs = append(attrs, attribute.String(AttrObservationInput, serializeToJSON(t.Input)))
 	}
 	if t.Output != nil {
-		attrs = append(attrs, attribute.String(AttrTraceOutput, serializeToJSON(t.Output)))
+		attrs = append(attrs, attribute.String(AttrObservationOutput, serializeToJSON(t.Output)))
 	}
 	if t.UserID != "" {
 		attrs = append(attrs, attribute.String(AttrUserID, t.UserID))
@@ -68,9 +71,7 @@ func traceAttributes(t *Trace) []attribute.KeyValue {
 	if len(t.Tags) > 0 {
 		attrs = append(attrs, attribute.String(AttrTraceTags, serializeToJSON(t.Tags)))
 	}
-	if t.Metadata != nil {
-		attrs = append(attrs, attribute.String(AttrTraceMetadata, serializeToJSON(t.Metadata)))
-	}
+	attrs = append(attrs, traceMetadataAttributes(t.Metadata)...)
 	if t.Release != "" {
 		attrs = append(attrs, attribute.String(AttrRelease, t.Release))
 	}
@@ -79,6 +80,24 @@ func traceAttributes(t *Trace) []attribute.KeyValue {
 	}
 	if t.Environment != "" {
 		attrs = append(attrs, attribute.String(AttrEnvironment, t.Environment))
+	}
+	return attrs
+}
+
+func traceMetadataAttributes(metadata any) []attribute.KeyValue {
+	if metadata == nil {
+		return nil
+	}
+	// Metadata is expanded per key so Langfuse can filter on individual fields.
+	// For example, the "tenant" field becomes langfuse.trace.metadata.tenant.
+	values := reflect.ValueOf(metadata)
+	if values.Kind() != reflect.Map || values.Type().Key().Kind() != reflect.String {
+		return nil
+	}
+	attrs := make([]attribute.KeyValue, 0, values.Len())
+	for _, key := range values.MapKeys() {
+		value := values.MapIndex(key)
+		attrs = append(attrs, attribute.String(AttrTraceMetadata+"."+key.String(), serializeToJSON(value.Interface())))
 	}
 	return attrs
 }
