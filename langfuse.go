@@ -74,7 +74,12 @@ type ClientOption func(*clientConfig)
 
 // clientConfig holds configuration options for the Langfuse client.
 type clientConfig struct {
-	httpClient *http.Client
+	httpClient  *http.Client
+	serviceName string
+}
+
+func WithServiceName(name string) ClientOption {
+	return func(config *clientConfig) { config.serviceName = name }
 }
 
 // WithHTTPClient sets a custom HTTP client for the Langfuse client.
@@ -127,7 +132,7 @@ func NewClient(host string, publicKey string, secretKey string, options ...Clien
 	restyCli.SetBaseURL(host+"/api/public").
 		SetBasicAuth(publicKey, secretKey)
 
-	otelIngestor, err := traces.NewIngestor(host, publicKey, secretKey)
+	otelIngestor, err := traces.NewIngestor(host, publicKey, secretKey, traces.WithServiceName(config.serviceName))
 	if err != nil {
 		panic(fmt.Sprintf("failed to create OTel ingestor: %v", err))
 	}

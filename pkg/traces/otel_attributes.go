@@ -105,6 +105,12 @@ func traceMetadataAttributes(metadata any) []attribute.KeyValue {
 func observationAttributes(o *Observation) []attribute.KeyValue {
 	attrs := make([]attribute.KeyValue, 0, 12)
 	attrs = append(attrs, attribute.String(AttrObservationType, strings.ToLower(string(o.Type))))
+	if o.UserID != "" {
+		attrs = append(attrs, attribute.String(AttrUserID, o.UserID))
+	}
+	if o.SessionID != "" {
+		attrs = append(attrs, attribute.String(AttrSessionID, o.SessionID))
+	}
 
 	if o.Input != nil {
 		attrs = append(attrs, attribute.String(AttrObservationInput, serializeToJSON(o.Input)))

@@ -64,6 +64,8 @@ type Observation struct {
 	Level               ObservationLevel `json:"level,omitempty"`
 	StatusMessage       string           `json:"statusMessage,omitempty"`
 	Environment         string           `json:"environment,omitempty"`
+	UserID              string           `json:"-"`
+	SessionID           string           `json:"-"`
 }
 
 // End finalizes the observation by exporting the OTel span.

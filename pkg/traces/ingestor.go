@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
@@ -17,6 +19,11 @@ type IngestorOption func(*ingestorConfig)
 
 type ingestorConfig struct {
 	spanProcessor sdktrace.SpanProcessor
+	serviceName   string
+}
+
+func WithServiceName(name string) IngestorOption {
+	return func(c *ingestorConfig) { c.serviceName = name }
 }
 
 func WithSpanProcessor(sp sdktrace.SpanProcessor) IngestorOption {
@@ -42,15 +49,14 @@ func NewIngestor(host, publicKey, secretKey string, opts ...IngestorOption) (*In
 			context.Background(),
 			otlptracehttp.WithEndpointURL(host+"/api/public/otel/v1/traces"),
 			otlptracehttp.WithHeaders(map[string]string{
-				"Authorization": authHeader,
+				"Authorization":                authHeader,
+				"x-langfuse-ingestion-version": "4",
 			}),
 		)
 		if err != nil {
 			return nil, err
 		}
-		provider = sdktrace.NewTracerProvider(
-			sdktrace.WithBatcher(exporter),
-		)
+		provider = sdktrace.NewTracerProvider(sdktrace.WithBatcher(exporter), sdktrace.WithResource(resource.NewSchemaless(attribute.String("service.name", cfg.serviceName))))
 	}
 
 	// Use a private tracer bound directly to our own provider rather than
